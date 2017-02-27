@@ -1,17 +1,19 @@
 language: node_js
 node_js:
-  - '6'
-  - '4'
+- '6'
+- '4'
 matrix:
   include:
   - node_js: 7
     env:
-      - secure: K06xord93jGaSu0PKgPwHyZJrD5hBkdh+vpUJFHNFLK61dlU8ZyBWkfIGEMdz7do8GE+wd3lXRLG4I9ib7ZOv4A5pablJ1lXch80fh9auKIrXjUWUsk+a/NVsHAgAFn4sHIHf/tGLPTXIAwj1AStxQcGsGl9iD83T89+9XEVFLMKDct0u7eJpwD3zQmEsO0dr1QOZ6QQ3LJpIlSEluuQwlOm8W00gRTLCWuhTm8c/WNTNSHsBuSDmHiZfs/VJ80EXFHD7YzIlVyiNz+4IysBXwhYzOa4eh+FSX157ESMc56DlfPNYvN930hViB0zI4H7IFekOLzu9COoBT+1WFb0XHxK3kqOabPc9u2sNrWSUtWdDKuQVuHH+9tTc/b92YB3raBEExdRR4ZiugqXgWE4BMrQys/zYW6cPPBuZbUhX2+/VaLxq9rc4wt5cOmnGzAL6qn4516Pj+5qpQmGooB9eH4mKHTnHbWcKj4Z9g/ctyX3CxdLnYvNp3JeaXH9GAHd58WcQcvxM4EleY+Sc0ieHpy68nMUHqQzGBxX07uBKgNHcvAtqGlP4QxsaZBK2uLI+HwhM8kdsOg31lJOIMVlNp8sE09SUNRgqwUNDPkSzDEIRSmwvGGtlDMYdBj8y6+/lSFOcdpTaVBKB+p0T968fE1qqdDG45ZpBK5bHzl9WWg=
+    - secure: WeaXYaXxi9kMqypUOgbFtbt7kLk4ojf+Jk2cZqAFwtdMiwk2TysD+fckPn6qpBQzwxcj1XdfYNiY72pHe+BEFxThNQ3LM/Lz60M6ZCkJCkJ2LpQDOtGISQAV+a/4ZVvL2ENRg6V/JvXvUV5jlk8e9flwW06hh20JOzGIX0D9Ez8WIy439vjsUv6Umywh6jXR9VdzouRgWb1sQ2q71JYghaa8Ny+HNtEYbTC3JmFVZ8PdMmqpKLbX5axTGGH9DBkRYSoDBmaoOZqv2ppscTTr/vbr9PqbkWMo78jlH5ly35QBfttuV8xgi6dIq+N6AX0CIAfG1dzjsjqC2hbWDrErbVn4Og+DNUC7o201JAZOzYrCv4fc7kGjsfsTjeUMQG9JRvdsAzoJxnCnr7AiXYgMcipAaNnLPflF9tIfHb48PB5nk3NGc4S2CwIiE1rQI3LOOaCvy0bWLyptMF4FxH1D6yiyXvQoHpnZ92zCFyVPJ+HB+giuUjOrma0Qc2Pwm8Mch7GdCa86UJPA/dcbKu2xBK2YJf/QmVHnI0XvI6M+an9kg9wUtRr3WnNnM4r4DMvl4CiX6eVCdGk5jPfAXaZgBOuN/HIT6xZGZOZRCflHcqrfD/eYTaNOb1TjSO5eelFc/nlk5FKX2DDsmevvu1M8ND++DsxbHZPWtPHZHANlgnk=
 sudo: false
 git:
   depth: 5
 cache:
   directories:
-    - ~/.npm
+  - ~/.npm
 before_install:
-  - npm config set spin false --global
+- npm config set spin false --global
+env:
+  global:
