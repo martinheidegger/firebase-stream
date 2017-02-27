@@ -38,7 +38,7 @@ const dbRef = db.ref().child('my-streams')
 // This will not work if you don't call `npm install firebase-stream` if you didn't do so already!
 const stream = require('firebase-stream')
 const output = stream.createWriteStream({
-  node: dbRef.push(null) // This means we need to setup
+  node: dbRef.push(null) // The new stream will pipe in a new child
 })
 
 // Write something to the outstream
