@@ -1,0 +1,33 @@
+{
+  "name": "firebase-stream",
+  "version": "1.0.0",
+  "description": "A remote stream connection using the firebase db",
+  "main": "createStream.js",
+  "scripts": {
+    "lint": "./node_modules/.bin/standard",
+    "test": "npm run lint && npm run test:cov",
+    "test:cov": "./node_modules/.bin/tap --coverage -- test/*.js",
+    "test:unit": "./node_modules/.bin/tap -- test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/martinheidegger/firebase-stream.git"
+  },
+  "keywords": ["firebase", "streams", "pipe"],
+  "author": "Martin Heidegger <martin.heidegger@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/martinheidegger/firebase-stream/issues"
+  },
+  "homepage": "https://github.com/martinheidegger/firebase-stream#readme",
+  "devDependencies": {
+    "firebase": "^3.6.10",
+    "standard": "^8.6.0",
+    "stream-to-string": "^1.1.0",
+    "string-to-stream": "^1.1.0",
+    "tap": "^10.2.1"
+  },
+  "dependencies": {
+    "readable-stream": "^2.2.3"
+  }
+}

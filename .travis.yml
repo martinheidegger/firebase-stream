@@ -1,0 +1,15 @@
+language: node_js
+node_js:
+  - '6'
+  - '4'
+matrix:
+  include:
+  - node_js: 7
+sudo: false
+git:
+  depth: 5
+cache:
+  directories:
+    - ~/.npm
+before_install:
+  - npm config set spin false --global
