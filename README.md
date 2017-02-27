@@ -1,5 +1,9 @@
 # Pipe to [firebase](https://firebase.google.com) and back
 
+[![Build Status](https://travis-ci.org/martinheidegger/firebase-stream.svg?branch=master)](https://travis-ci.org/martinheidegger/firebase-stream)
+[![Coverage Status](https://coveralls.io/repos/github/martinheidegger/firebase-stream/badge.svg?branch=master)](https://coveralls.io/github/martinheidegger/firebase-stream?branch=master)
+[![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/)
+
 `firebase-stream` allows you to pipe any [Node.js stream](https://nodejs.org/api/stream.html)
 to a database node in google's firebase and read its data back as stream.
 
