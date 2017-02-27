@@ -50,14 +50,31 @@ test('error instance without node', function (t) {
 
 test('simple piping to a stream', function (t) {
   const dbRef = newRef(t)
+  const finRef = dbRef.child('finished')
+  var finishPopulated = null
   const outstream = createWriteStream({
     node: dbRef
   })
+  const finishedListener = function (snap) {
+    const finished = snap.val()
+    if (finished) {
+      t.equals(finishPopulated, false)
+      finishPopulated = true
+      finRef.off('value')
+    } else if (finished === false) {
+      t.equals(finishPopulated, null)
+      finishPopulated = false
+    } else {
+      t.fail('Unexpected state')
+    }
+  }
+  finRef.on('value', finishedListener)
   toStream('Hello World').pipe(outstream)
   t.equals(outstream.url, dbRef.toString())
   toString(createReadStream({
     node: ref.child(outstream.key)
   }), function (err, string) {
+    t.equals(finishPopulated, true)
     t.equals(err, null)
     t.equals(string, 'Hello World')
     t.end()

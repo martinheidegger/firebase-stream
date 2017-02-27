@@ -58,9 +58,7 @@ const createStream = function (options) {
   if (!readable && !writable) {
     throw new AppError('ERRMODE', 'Option Error: `mode` needs to be `r`, `w` or `rw`!')
   }
-  options.node.update({
-    finished: false
-  })
+  options.node.child('finished').set(false)
   if (options.enableTime) {
     // Enable time enforces objectMode on the stream since the times are stored
     // in an object
@@ -92,9 +90,7 @@ const createStream = function (options) {
         }
       }
       if (!lock) {
-        options.node.update({
-          finished: true
-        })
+        options.node.child('finished').set(true)
       }
       buffer.off('child_removed', removeCheck)
       buffer.off('child_added', onData)
