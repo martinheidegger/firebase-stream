@@ -132,7 +132,6 @@ const createStream = function (options) {
     stream._read = function noop (size) {}
   }
   if (writable) {
-
     stream._write = function (chunk, encoding, callback) {
       if (!finished) {
         var time

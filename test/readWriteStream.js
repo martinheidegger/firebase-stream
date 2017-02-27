@@ -278,10 +278,6 @@ test('removing a stream should end the streams', function (t) {
   const stream = createDuplexStream({
     node: dbRef
   })
-  const original = [
-    {a: 1},
-    'Hello'
-  ]
   var deleted = false
   dbRef.on('value', function (snap) {
     if (snap.val() === null) {
