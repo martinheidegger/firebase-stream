@@ -10,11 +10,19 @@ const firebase = require('firebase')
 const toStream = require('string-to-stream')
 const toString = require('stream-to-string')
 
-const app = firebase.initializeApp({
-  databaseURL: 'https://runner-worker.firebaseio-demo.com'
-})
-const db = app.database()
-const ref = db.ref().child('queue').child('stream-test')
+if (!process.env.FIREBASE_URL) {
+  throw new Error('environment variable FIREBASE_URL needs to point to a firebase repo with free read/write access!')
+}
+
+function createDb (name) {
+  return firebase.initializeApp({
+    databaseURL: process.env.FIREBASE_URL
+  }, name).database()
+}
+
+const db = createDb('db')
+const db2 = createDb('db2')
+const ref = db.ref().child('queue').child('stream-test').push(null).child('streams')
 const dateReg = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z/
 
 function newRef (t) {
@@ -26,7 +34,10 @@ function newRef (t) {
 }
 
 tearDown(function () {
-  db.goOffline()
+  return ref.remove().then(function () {
+    db.goOffline()
+    db2.goOffline()
+  })
 })
 
 test('error instance without node', function (t) {
@@ -58,11 +69,11 @@ test('simple piping to a stream', function (t) {
   const finishedListener = function (snap) {
     const finished = snap.val()
     if (finished) {
-      t.equals(finishPopulated, false)
+      t.equals(finishPopulated, false, 'Then finished is `false`')
       finishPopulated = true
       finRef.off('value')
     } else if (finished === false) {
-      t.equals(finishPopulated, null)
+      t.equals(finishPopulated, null, 'Finished is `null` at start')
       finishPopulated = false
     } else {
       t.fail('Unexpected state')
@@ -70,13 +81,13 @@ test('simple piping to a stream', function (t) {
   }
   finRef.on('value', finishedListener)
   toStream('Hello World').pipe(outstream)
-  t.equals(outstream.url, dbRef.toString())
+  t.equals(outstream.url, dbRef.toString(), 'Url matches')
   toString(createReadStream({
-    node: ref.child(outstream.key)
+    node: db2.refFromURL(outstream.url)
   }), function (err, string) {
-    t.equals(finishPopulated, true)
-    t.equals(err, null)
-    t.equals(string, 'Hello World')
+    t.equals(finishPopulated, true, 'At the end finished is `true`')
+    t.equals(err, null, 'No Error occurred')
+    t.equals(string, 'Hello World', 'Data properly transported')
     t.end()
   })
 })
@@ -89,7 +100,7 @@ test('reading after everything is written to stream', function (t) {
     .pipe(outstream)
     .on('finish', function () {
       toString(createReadStream({
-        node: ref.child(outstream.key)
+        node: db2.refFromURL(outstream.url)
       }), function (err, string) {
         t.equals(err, null)
         t.equals(string, 'Hello World')
@@ -108,7 +119,7 @@ test('recording of time will make the time available', function (t) {
     .pipe(outstream)
     .on('finish', function () {
       createReadStream({
-        node: ref.child(outstream.key),
+        node: db2.refFromURL(outstream.url),
         enableTime: true
       })
         .on('data', function (data) {
@@ -137,7 +148,7 @@ test('writing in string steps to a stream with objectMode', function (t) {
   }
   readableStream.pipe(outstream)
   toString(createReadStream({
-    node: ref.child(outstream.key)
+    node: db2.refFromURL(outstream.url)
   }), function (err, string) {
     t.equals(err, null)
     t.equals(string, 'Hello World')
@@ -162,7 +173,7 @@ test('writing in string steps to a stream with objectMode with enabled time', fu
     .pipe(outstream)
     .on('finish', function () {
       createReadStream({
-        node: ref.child(outstream.key),
+        node: db2.refFromURL(outstream.url),
         enableTime: true
       })
         .on('data', function (data) {
@@ -192,14 +203,16 @@ test('writing in objects steps to a stream with objectMode', function (t) {
     .pipe(outstream)
     .on('finish', function () {
       createReadStream({
-        node: ref.child(outstream.key),
+        node: db2.refFromURL(outstream.url),
         objectMode: true
       })
         .on('data', function (data) {
-          t.same(data.data, original.shift())
-          if (data.data === null) {
-            return t.end()
-          }
+          t.same(data, original.shift(), 'I/O comparison')
+        })
+        .on('end', function () {
+          t.equals(original[0], null, 'Null does not trigger a data event')
+          t.equals(original.length, 1, 'No other entry left except null')
+          t.end()
         })
     })
 })
@@ -210,8 +223,8 @@ test('writing to simple duplex stream', function (t) {
       node: newRef(t)
     })),
     function (err, data) {
-      t.equals(err, null)
-      t.equals(data, 'Hello World')
+      t.equals(err, null, 'No Error occured')
+      t.equals(data, 'Hello World', 'Data was simply passed through duplex stream')
       t.end()
     }
   )
@@ -227,11 +240,11 @@ test('writing to a duplex stream with time enabled', function (t) {
     'Hello'
   ]
   stream.on('data', function (data) {
-    t.same(data.data, original.shift())
-    t.match(data.time, dateReg)
+    t.same(data.data, original.shift(), 'Data matches')
+    t.match(data.time, dateReg, 'Correct timestamp')
   })
   stream.on('end', function () {
-    t.equals(original.length, 0)
+    t.equals(original.length, 0, 'No buffer left')
     t.end()
   })
   original.forEach(function (entry) {
@@ -271,18 +284,19 @@ test('disposing a stream should end the streams', function (t) {
   const original = [
     'Hello'
   ]
-  var ended = false
+  var removed = false
   dbRef.on('value', function (snap) {
     if (snap.val() === null) {
-      t.ok(ended)
-      t.end()
+      removed = true
     }
   })
   stream.once('data', function (data) {
     stream.dispose()
   })
   stream.on('end', function () {
-    ended = true
+    removed = true
+    t.ok(removed, 'When the stream ends the data should be removed')
+    t.end()
   })
   original.forEach(function (entry) {
     stream.write(entry)
@@ -293,7 +307,8 @@ test('disposing a stream should end the streams', function (t) {
 test('removing a stream should end the streams', function (t) {
   const dbRef = newRef(t)
   const stream = createDuplexStream({
-    node: dbRef
+    node: dbRef,
+    allowHalfOpen: false
   })
   var deleted = false
   dbRef.on('value', function (snap) {

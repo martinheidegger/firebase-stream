@@ -26,6 +26,7 @@
   },
   "homepage": "https://github.com/martinheidegger/firebase-stream#readme",
   "devDependencies": {
+    "bluebird": "^3.4.7",
     "firebase": "^3.6.10",
     "standard": "^8.6.0",
     "standard-version": "^4.0.0",

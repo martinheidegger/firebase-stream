@@ -88,12 +88,5 @@ instance.dispose() // Remove the data
 The reference passed-in to the stream will not be written to.
 Instead `firebase-stream` will create two `children`: `finished` and `buffer`.
 `finished` will be either `true` or `false`, depending if the stream is finished
-or not. `buffer` will contain a list of children that each contains one `chunk`
-of data. The first entry with a `null`-value terminates the stream. Any `Buffer`
-that is sent to the stream will have its value stored in `data` and its
-`type` === `true`.
-
-If `enableTime` is set to `true` it will store every entry in an Object. `null`
-will become like `{data: null, time: '2017-02-27T05:37:07.613Z'}`. Buffers will
-become like `{data: [12, 151, 14], time: '2017-02-27T05:37:07.613Z', type: 'Buffer'}`
-and so on.
+or not. `buffer` will contain a list of children that each contains one "chunk"
+field and a `time` field. The first entry with `null` as `data` terminates the stream.

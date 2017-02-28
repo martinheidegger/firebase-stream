@@ -12,38 +12,6 @@ AppError.prototype.toString = function () {
   return '[' + this.code + '] ' + this.message
 }
 
-function parseInput (raw, objectMode) {
-  if (raw === 'null') {
-    if (objectMode) {
-      return {data: null}
-    }
-    return null
-  }
-  const json = JSON.parse(raw)
-  if (typeof json === 'string') {
-    if (objectMode) {
-      return {
-        data: json
-        // time not stored
-      }
-    }
-    return json || null
-  }
-  if (json.type === 'Buffer') {
-    if (objectMode) {
-      return {
-        data: Buffer.from(json.data),
-        time: json.time
-      }
-    }
-    return Buffer.from(json.data)
-  }
-  if (objectMode) {
-    return json || null
-  }
-  return json.data || null
-}
-
 const createStream = function (options) {
   if (!options) {
     options = {}
@@ -55,10 +23,19 @@ const createStream = function (options) {
     throw new AppError('ERRNODE', 'Option Error: `node` is missing!')
   }
   const buffer = options.node.child('buffer')
+  const finRef = options.node.child('finished')
   if (!readable && !writable) {
     throw new AppError('ERRMODE', 'Option Error: `mode` needs to be `r`, `w` or `rw`!')
   }
-  options.node.child('finished').set(false)
+  var _waitFor
+  if (writable) {
+    _waitFor = Promise.all([
+      buffer.set([]),
+      finRef.set(false)
+    ])
+  } else {
+    _waitFor = Promise.resolve(null)
+  }
   if (options.enableTime) {
     // Enable time enforces objectMode on the stream since the times are stored
     // in an object
@@ -66,48 +43,103 @@ const createStream = function (options) {
   }
   var finished = false
   var lock = false
+  var count = 0
+  const putNext = function (data, callback) {
+    const payload = {}
+    const line = {
+      data: data,
+      time: new Date().toISOString()
+    }
+    payload[count] = line
+    count += 1
+    _waitFor.then(function () {
+      return buffer.update(payload)
+    }).then(function () {
+      if (data === null) {
+        return finRef.set(true).then(function () {
+          return new Promise(function (resolve) {
+            setImmediate(resolve)
+          })
+        })
+      }
+      return null
+    }).then(function () {
+      if (readable && !lock) {
+        // Duplex stream processing
+        if (data === null) {
+          if (options.enableTime) {
+            stream.push(line)
+          }
+          stream.push(null)
+          finish()
+        } else if (options.enableTime) {
+          stream.push(line)
+        } else if (options.objectMode || data === undefined || typeof data === 'string' || data instanceof Buffer) {
+          stream.push(data)
+        } else {
+          stream.push(String(data))
+        }
+      }
+      if (callback) {
+        callback()
+      }
+    }).catch(function (err) {
+      if (callback) {
+        callback(err)
+      }
+    })
+  }
   const finish = function () {
     if (!finished) {
       finished = true
-      if (writable) {
-        var time
-        if (options.enableTime) {
-          time = new Date().toISOString()
-          if (!lock) {
-            buffer.push('{"data":null,"time":"' + time + '"}')
-          }
-        } else if (!lock) {
-          buffer.push('null')
-        }
-        if (readable) {
-          if (time) {
-            stream.push({
-              data: null,
-              time: time
-            })
-          }
-          stream.push(null)
-        }
-      }
-      if (!lock) {
-        options.node.child('finished').set(true)
-      }
       buffer.off('child_removed', removeCheck)
       buffer.off('child_added', onData)
+      return true
     }
+    return false
   }
   const stream = readable ? (writable ? new Duplex(options) : new Readable(options)) : new Writable(options)
   const onData = function (snap) {
-    const raw = snap.val()
-    var val = parseInput(raw, options.objectMode)
-    const objectOk = (options.objectMode || val instanceof Buffer || typeof val === 'string' || val === null)
-    if (!lock) {
-      stream.push(objectOk ? val : Buffer.from(String(val)))
+    var raw = snap.val()
+    if (raw === null) {
+      // This case should never occur. But if it does through manual manipulation
+      // it will not break anything
+      return
     }
-    if (options.objectMode && val && val.data === null) {
-      stream.push(null)
+    if (raw.data === undefined) {
+      raw.data = null
+    } else if (!(
+      raw.data === null ||
+      typeof raw.data === 'string' ||
+      raw.data instanceof Buffer
+    )) {
+      if (raw.data.type === 'Buffer') {
+        raw.data = Buffer.from(raw.data.data)
+      } else if (!options.objectMode) {
+        // Make sure that we stringify the data
+        raw.data = String(raw.data)
+      }
     }
-    if (val === null || val.data === null) {
+    if (raw.data === null) {
+      if (finish()) {
+        const waitForFinish = function (snap) {
+          if (!snap.val()) {
+            return
+          }
+          finRef.off('value', waitForFinish)
+          if (options.enableTime) {
+            stream.push(raw)
+          }
+          stream.push(null)
+        }
+        finRef.on('value', waitForFinish)
+      }
+    } else if (options.enableTime) {
+      stream.push(raw)
+    } else {
+      stream.push(raw.data)
+    }
+    if (raw.data === null) {
       finish()
     }
   }
@@ -115,6 +147,16 @@ const createStream = function (options) {
     options.node.once('value', function (snap) {
       if (snap.val() === null) {
         lock = true
+        if (!finished) {
+          if (writable && (!readable || options.allowHalfOpen !== false)) {
+            stream.uncork()
+            stream.end(null)
+          }
+          if (readable) {
+            stream.resume()
+            stream.push(null)
+          }
+        }
         finish()
       }
     })
@@ -123,79 +165,51 @@ const createStream = function (options) {
   if (readable) {
     // Duplex stream directly sends back the data
     if (!writable) {
-      buffer.on('child_added', onData)
+      _waitFor = _waitFor.then(function () {
+        return new Promise(function (resolve) {
+          const handleInitialValue = function (snap) {
+            if (snap.val() === null) {
+              return
+            }
+            buffer.off('value', handleInitialValue)
+            if (finished || lock) {
+              return // Nothing to do anymore
+            }
+            buffer.on('child_added', onData)
+            snap.forEach(function (child) {
+              child.val()
+              // onData(child)
+            })
+            resolve()
+          }
+          buffer.on('value', handleInitialValue)
+        })
+      })
+      // buffer.on('child_added', onData)
     }
     stream._read = function noop (size) {}
   }
+  _waitFor.then(function () {
+    _waitFor = Promise.resolve(null)
+  })
   if (writable) {
     stream._write = function (chunk, encoding, callback) {
       if (!finished) {
-        var time
-        if (options.enableTime) {
-          time = (new Date().toISOString())
-        }
-        var streamOut
-        var bufferOut
-        if (typeof chunk === 'string' && chunk.length > 0) {
-          if (time) {
-            bufferOut = '{"data":' + JSON.stringify(chunk) + ',"time":"' + time + '"}'
-          } else {
-            bufferOut = JSON.stringify(chunk)
-          }
-          if (readable) {
-            if (options.objectMode) {
-              streamOut = {
-                data: chunk,
-                time: time
-              }
-            } else {
-              // TODO: Does this case really exist or does the stream implementation
-              // automatically convert to Buffer?
-              streamOut = chunk
-            }
-          }
-        } else if ((encoding === 'buffer' || chunk instanceof Buffer) && chunk.length > 0) {
-          const val = chunk.toJSON()
-          val.time = time
-          bufferOut = JSON.stringify(val)
-          if (readable) {
-            streamOut = time ? val : chunk
-          }
-        } else if (chunk) {
-          if (time) {
-            bufferOut = '{"data":' + JSON.stringify(chunk) + ',"time":"' + time + '"}'
-          } else {
-            bufferOut = '{"data":' + JSON.stringify(chunk) + '}'
-          }
-          if (readable) {
-            streamOut = {
-              data: chunk,
-              time: time
-            }
-          }
-        }
-        // Finished can be set to true by the result of writing to the buffer
-        if (streamOut !== undefined) {
-          stream.push(streamOut)
-        }
-        if (bufferOut !== undefined) {
-          buffer.push(bufferOut)
-        }
+        putNext(chunk, callback)
+      } else {
+        setImmediate(callback)
       }
-      setImmediate(callback)
     }
     stream.on('finish', function () {
       if (!finished) {
-        finish()
+        putNext(null)
       }
     })
   }
   var _disposed
   stream.dispose = function () {
     if (!_disposed) {
-      _disposed = true
-      finish()
-      setImmediate(options.node.remove.bind(options.node))
+      _disposed = options.node.remove()
     }
     return _disposed
   }
