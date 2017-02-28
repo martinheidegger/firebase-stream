@@ -44,11 +44,16 @@ const createStream = function (options) {
   var finished = false
   var lock = false
   var count = 0
-  const putNext = function (data, callback) {
+  const putNext = function (data, encoding, callback) {
     const payload = {}
     const line = {
-      data: data,
       time: new Date().toISOString()
+    }
+    if (data !== undefined) {
+      line.data = data
+    }
+    if (encoding !== undefined) {
+      line.encoding = encoding
     }
     payload[count] = line
     count += 1
@@ -75,7 +80,7 @@ const createStream = function (options) {
         } else if (options.enableTime) {
           stream.push(line)
         } else if (options.objectMode || data === undefined || typeof data === 'string' || data instanceof Buffer) {
-          stream.push(data)
+          stream.push(data, options.objectMode ? undefined : encoding)
         } else {
           stream.push(String(data))
         }
@@ -87,6 +92,8 @@ const createStream = function (options) {
       if (callback) {
         callback(err)
       }
+      console.log('WARNING: Error in stream')
+      console.log(err.stack || err)
     })
   }
   const finish = function () {
@@ -137,7 +144,7 @@ const createStream = function (options) {
     } else if (options.enableTime) {
       stream.push(raw)
     } else {
-      stream.push(raw.data)
+      stream.push(raw.data, raw.encoding)
     }
     if (raw.data === null) {
       finish()
@@ -195,7 +202,7 @@ const createStream = function (options) {
   if (writable) {
     stream._write = function (chunk, encoding, callback) {
       if (!finished) {
-        putNext(chunk, callback)
+        putNext(chunk, encoding, callback)
       } else {
         setImmediate(callback)
       }
