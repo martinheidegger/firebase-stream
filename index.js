@@ -144,7 +144,7 @@ const createStream = function (options) {
     } else if (options.enableTime) {
       stream.push(raw)
     } else {
-      stream.push(raw.data, raw.encoding)
+      stream.push(raw.data, raw.encoding === 'buffer' ? undefined : raw.encoding)
     }
     if (raw.data === null) {
       finish()
