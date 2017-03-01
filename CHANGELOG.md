@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="1.1.3"></a>
+## [1.1.3](https://github.com/martinheidegger/firebase-stream/compare/v1.1.2...v1.1.3) (2017-03-01)
+
+
+### Bug Fixes
+
+* **read:** Not sure where the encoding “buffer” comes from but it should not be pushed into a stream. ([8bc64a5](https://github.com/martinheidegger/firebase-stream/commit/8bc64a5))
+
+
+
 <a name="1.1.2"></a>
 ## [1.1.2](https://github.com/martinheidegger/firebase-stream/compare/v1.1.1...v1.1.2) (2017-02-28)
 
