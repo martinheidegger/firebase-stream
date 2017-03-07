@@ -87,7 +87,7 @@ test('simple piping to a stream', function (t) {
     }).then(function () {
       return getData(dbRef.child('finished'))
         .then(function (finished) {
-          t.ok(finished, 'Stream is finished after ending')
+          t.matches(finished, dateReg, 'At the end finished is a date.')
           t.end()
         })
     })

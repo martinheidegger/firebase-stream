@@ -31,7 +31,7 @@ const createStream = function (options) {
   if (writable) {
     _waitFor = Promise.all([
       buffer.set([]),
-      finRef.set(false)
+      finRef.set(null)
     ])
   } else {
     _waitFor = Promise.resolve(null)
@@ -65,7 +65,7 @@ const createStream = function (options) {
       return buffer.update(payload)
     }).then(function () {
       if (data === null) {
-        return finRef.set(true).then(function () {
+        return finRef.set(new Date().toISOString()).then(function () {
           return new Promise(function (resolve) {
             setImmediate(resolve)
           })
