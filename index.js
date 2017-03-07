@@ -22,11 +22,11 @@ const createStream = function (options) {
   if (!options.node) {
     throw new AppError('ERRNODE', 'Option Error: `node` is missing!')
   }
-  const buffer = options.node.child('buffer')
-  const finRef = options.node.child('finished')
   if (!readable && !writable) {
     throw new AppError('ERRMODE', 'Option Error: `mode` needs to be `r`, `w` or `rw`!')
   }
+  const buffer = options.node.child('buffer')
+  const finRef = options.node.child('finished')
   var _waitFor
   if (writable) {
     _waitFor = Promise.all([
