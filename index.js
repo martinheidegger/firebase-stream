@@ -30,6 +30,7 @@ const createStream = function (options) {
   var _waitFor
   if (writable) {
     _waitFor = Promise.all([
+      options.node.child('started').set(new Date().toISOString()),
       buffer.set([]),
       finRef.set(null)
     ])

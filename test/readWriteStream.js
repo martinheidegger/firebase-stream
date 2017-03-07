@@ -72,23 +72,27 @@ test('simple piping to a stream', function (t) {
   const outstream = createWriteStream({
     node: dbRef
   })
-  toStream('Hello World').pipe(outstream)
-  t.equals(outstream.url, dbRef.toString(), 'Url matches')
-  return new Promise(
-    function (resolve, reject) {
-      const stream = createReadStream({node: db2.refFromURL(outstream.url)})
-      toString(stream, function (err, string) {
-        if (err) {
-          return reject(err)
-        }
-        t.equals(string, 'Hello World', 'Data properly transported')
-        resolve()
-      })
-    }).then(function () {
-      return getData(dbRef.child('finished'))
-        .then(function (finished) {
-          t.matches(finished, dateReg, 'At the end finished is a date.')
-          t.end()
+  return getData(dbRef.child('started'))
+    .then(function (started) {
+      t.matches(started, dateReg, 'The start time should be a date')
+      toStream('Hello World').pipe(outstream)
+      t.equals(outstream.url, dbRef.toString(), 'Url matches')
+      return new Promise(
+        function (resolve, reject) {
+          const stream = createReadStream({node: db2.refFromURL(outstream.url)})
+          toString(stream, function (err, string) {
+            if (err) {
+              return reject(err)
+            }
+            t.equals(string, 'Hello World', 'Data properly transported')
+            resolve()
+          })
+        }).then(function () {
+          return getData(dbRef.child('finished'))
+            .then(function (finished) {
+              t.matches(finished, dateReg, 'At the end finished is a date.')
+              t.end()
+            })
         })
     })
 })
