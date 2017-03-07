@@ -49,6 +49,10 @@ const createStream = function (options) {
     const line = {
       time: new Date().toISOString()
     }
+    if (!options.binary && data instanceof Buffer) {
+      data = data.toString()
+      encoding = 'utf8'
+    }
     if (data !== undefined) {
       line.data = data
     }

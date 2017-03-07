@@ -33,6 +33,14 @@ function newRef (t) {
   return dbRef
 }
 
+function getData (ref) {
+  return new Promise(function (resolve) {
+    ref.once('value', function (snap) {
+      resolve(snap.val())
+    })
+  })
+}
+
 tearDown(function () {
   return ref.remove().then(function () {
     db.goOffline()
@@ -61,35 +69,28 @@ test('error instance without node', function (t) {
 
 test('simple piping to a stream', function (t) {
   const dbRef = newRef(t)
-  const finRef = dbRef.child('finished')
-  var finishPopulated = null
   const outstream = createWriteStream({
     node: dbRef
   })
-  const finishedListener = function (snap) {
-    const finished = snap.val()
-    if (finished) {
-      t.equals(finishPopulated, false, 'Then finished is `false`')
-      finishPopulated = true
-      finRef.off('value')
-    } else if (finished === false) {
-      t.equals(finishPopulated, null, 'Finished is `null` at start')
-      finishPopulated = false
-    } else {
-      t.fail('Unexpected state')
-    }
-  }
-  finRef.on('value', finishedListener)
   toStream('Hello World').pipe(outstream)
   t.equals(outstream.url, dbRef.toString(), 'Url matches')
-  toString(createReadStream({
-    node: db2.refFromURL(outstream.url)
-  }), function (err, string) {
-    t.equals(finishPopulated, true, 'At the end finished is `true`')
-    t.equals(err, null, 'No Error occurred')
-    t.equals(string, 'Hello World', 'Data properly transported')
-    t.end()
-  })
+  return new Promise(
+    function (resolve, reject) {
+      const stream = createReadStream({node: db2.refFromURL(outstream.url)})
+      toString(stream, function (err, string) {
+        if (err) {
+          return reject(err)
+        }
+        t.equals(string, 'Hello World', 'Data properly transported')
+        resolve()
+      })
+    }).then(function () {
+      return getData(dbRef.child('finished'))
+        .then(function (finished) {
+          t.ok(finished, 'Stream is finished after ending')
+          t.end()
+        })
+    })
 })
 
 test('reading after everything is written to stream', function (t) {
@@ -128,8 +129,55 @@ test('recording of time will make the time available', function (t) {
             t.equals(result, 'Hello World')
             return t.end()
           }
-          t.ok(data.data instanceof Buffer)
+          t.ok(typeof data.data === 'string', 'Entry is a string by default')
           result += data.data.toString()
+        })
+    })
+})
+
+test('recording of time will make the time available', function (t) {
+  const outstream = createWriteStream({
+    node: newRef(t),
+    enableTime: true
+  })
+  var result = ''
+  toStream('Hello World')
+    .pipe(outstream)
+    .on('finish', function () {
+      createReadStream({
+        node: db2.refFromURL(outstream.url),
+        enableTime: true
+      })
+        .on('data', function (data) {
+          t.equals(typeof data.time, 'string')
+          if (data.data === null) {
+            t.equals(result, 'Hello World')
+            return t.end()
+          }
+          t.ok(typeof data.data === 'string', 'Entry is a string by default')
+          result += data.data.toString()
+        })
+    })
+})
+test('recording of time will make the time available', function (t) {
+  const outstream = createWriteStream({
+    node: newRef(t),
+    binary: true
+  })
+  var result = ''
+  toStream('Hello World')
+    .pipe(outstream)
+    .on('finish', function () {
+      createReadStream({
+        node: db2.refFromURL(outstream.url)
+      })
+        .on('data', function (data) {
+          t.ok(data instanceof Buffer, 'Entry is a string by default')
+          result += data.toString()
+        })
+        .on('end', function () {
+          t.equals(result, 'Hello World')
+          return t.end()
         })
     })
 })

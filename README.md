@@ -74,7 +74,8 @@ stream.createDuplexStream({/* options */) // equals to stream({mode: 'rw', ...})
 const instance = stream({
   mode: 'r', // (required) r = read, w = write, rw = read/write , kind of stream to be used on the ref
   node: ref, // (required) reference to a data node of firebase
-  enableTime: false // true switches the options to objectMode and stores the timestamp to each output
+  enableTime: false, // true switches the options to objectMode and stores the timestamp to each output
+  binary: false // true uses binary mode when writing the stream to the db
   // Additional options (like objectMode) are directly forwarded to the stream implementation
 })
 
@@ -82,6 +83,13 @@ instance.key // key of the node as in ref.key
 instance.url // url of the node as in ref.toString()
 instance.dispose() // Remove the data
 ```
+
+## Binary Modes
+
+By default data sent through the stream is stored as utf8 strings. This should
+mostly work just fine (even with binary data). The reason for this is because
+big integer arrays do not perform well in firebase. Setting the `binary` options
+will store the data as integer Array.
 
 ## Data Structure
 
