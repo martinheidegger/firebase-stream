@@ -57,7 +57,7 @@ const createStream = function (options) {
     if (data !== undefined) {
       line.data = data
     }
-    if (encoding !== undefined) {
+    if (encoding !== undefined && data instanceof Buffer) {
       line.encoding = encoding
     }
     payload[count] = line
